@@ -1,6 +1,11 @@
+
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000"
+).replace(/\/$/, "");
+
 export const syncFavorites = async (favorites) => {
-  const token =
-    localStorage.getItem("otakuhubToken");
+  const token = localStorage.getItem("otakuhubToken");
 
   if (!token) {
     return null;
@@ -8,15 +13,13 @@ export const syncFavorites = async (favorites) => {
 
   try {
     const response = await fetch(
-      "http://localhost:5000/api/auth/favorites",
+      `${API_URL}/api/auth/favorites`,
       {
         method: "PUT",
-
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-
         body: JSON.stringify(favorites),
       }
     );
@@ -24,26 +27,14 @@ export const syncFavorites = async (favorites) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error(
-        "Favorite sync failed:",
-        data.message
-      );
-
+      console.error("Favorite sync failed:", data.message);
       return null;
     }
 
-    console.log(
-      "Favorites synced:",
-      data
-    );
-
+    console.log("Favorites synced:", data);
     return data;
   } catch (error) {
-    console.error(
-      "Favorite sync error:",
-      error
-    );
-
+    console.error("Favorite sync error:", error);
     return null;
   }
 };

@@ -2467,6 +2467,15 @@ function AppRouter() {
           path="/:type/:id/read/:chapter"
           element={<Reader />}
         />
+<Route
+  path="/"
+  element={<App />}
+/>
+
+<Route
+  path="/anime"
+  element={<Anime />}
+/>
         </Routes>
 </main>
     </>
