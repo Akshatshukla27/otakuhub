@@ -13,16 +13,19 @@ const app = express();
 // =====================================================
 
 // Allow React/Vite frontend to communicate with backend
+
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
       "http://localhost:5174",
       "http://localhost:5175",
+      "https://otakuhub-theta.vercel.app",
     ],
     credentials: true,
   })
 );
+
 
 // IMPORTANT:
 // Parse JSON request bodies BEFORE API routes
