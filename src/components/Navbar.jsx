@@ -102,6 +102,13 @@ function Navbar() {
           ❤️ Favorites
         </NavLink>
 
+   <NavLink
+  to="/watchlist"
+  className={navLinkClass}
+>
+  📋 Watchlist
+</NavLink>
+
       </div>
 
       <div className="nav-actions">

@@ -1,3 +1,11 @@
+import {
+  getFavorites,
+  isFavorite,
+  toggleFavorite as toggleSharedFavorite,
+} from "./services/favorites";
+
+import { syncFavorites } from "./services/favoriteService";
+
 import { useEffect, useState } from "react";
 import {
   NavLink,
@@ -33,6 +41,7 @@ import Reader from "./pages/Reader";
 import Login from "./pages/login";
 import Signup from "./pages/Signup";
 import Profile from "./pages/Profile";
+import Watchlist from "./pages/Watchlist";
 import Navbar from "./components/Navbar";
 
 const navLinkClass = ({ isActive }) =>
@@ -66,6 +75,36 @@ const [trendingManhwa, setTrendingManhwa] = useState([]);
 const [featuredIndex, setFeaturedIndex] = useState(0);
 const [featuredCategory, setFeaturedCategory] = useState("anime");  // =====================================================
 
+const handleHomeFavorite = async (event, item) => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!item?.mal_id) return;
+
+  try {
+    toggleSharedFavorite(item, "Anime");
+
+    const favorites = getFavorites();
+
+    const animeFavoriteIds = favorites
+      .filter(
+        (favorite) =>
+          (favorite.category || "Anime") === "Anime" &&
+          favorite.mal_id
+      )
+      .map((favorite) => String(favorite.mal_id));
+
+    const token = localStorage.getItem("otakuhubToken");
+
+    if (token) {
+      await syncFavorites({
+        animeFavorites: animeFavoriteIds,
+      });
+    }
+  } catch (error) {
+    console.error("Home favorite error:", error);
+  }
+};
   // LOAD CURRENT USER
 
   // =====================================================
@@ -2182,45 +2221,59 @@ useEffect(() => {
           </p>
         ) : anime.length > 0 ? (
           <div className="cards">
-            {anime.map(
-              (item) => (
-                <NavLink
-                  to={`/anime/${item.mal_id}`}
-                  className="card"
-                  key={item.mal_id}
-                >
-                  <img
-                    src={
-                      item.images
-                        .jpg
-                        .large_image_url
-                    }
-                    alt={item.title}
-                  />
-                  <div className="card-info">
-                    <h3>
-                      {item.title}
-                    </h3>
-                    <div className="card-meta">
-                      <span>
-                        ⭐{" "}
-                        {item.score ||
-                          "N/A"}
-                      </span>
-                      <span>
-                        {item.type ||
-                          "Anime"}
-                      </span>
-                    </div>
-                    <p>
-                      {item.episodes
-                        ? `${item.episodes} Episodes`
-                        : "Episodes N/A"}
-                    </p>
-                  </div>
-                </NavLink>
-              )
-            )}
+            
+{anime.map((item) => (
+  <NavLink
+    to={`/anime/${item.mal_id}`}
+    className="card"
+    key={item.mal_id}
+  >
+    <div className="anime-card-poster">
+      <img
+        src={
+          item.images?.jpg?.large_image_url ||
+          item.images?.jpg?.image_url
+        }
+        alt={item.title}
+      />
+
+      <button
+        type="button"
+        className={
+          isFavorite(item.mal_id, "Anime")
+            ? "anime-card-favorite favorite-active"
+            : "anime-card-favorite"
+        }
+        onClick={(event) =>
+          handleHomeFavorite(event, item)
+        }
+        aria-label={
+          isFavorite(item.mal_id, "Anime")
+            ? "Remove from favorites"
+            : "Add to favorites"
+        }
+      >
+        {isFavorite(item.mal_id, "Anime") ? "❤️" : "♡"}
+      </button>
+    </div>
+
+    <div className="card-info">
+      <h3>{item.title}</h3>
+
+      <div className="card-meta">
+        <span>⭐ {item.score || "N/A"}</span>
+        <span>{item.type || "Anime"}</span>
+      </div>
+
+      <p>
+        {item.episodes
+          ? `${item.episodes} Episodes`
+          : "Episodes N/A"}
+      </p>
+    </div>
+  </NavLink>
+))}
+
           </div>
         ) : (
           <div className="coming-soon">
@@ -2451,6 +2504,10 @@ function AppRouter() {
           path="/favorites"
           element={<Favorites />}
         />
+        <Route
+          path="/watchlist"
+          element={<Watchlist />}
+        />
         <Route
           path="/login"
           element={<Login />}

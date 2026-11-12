@@ -399,4 +399,224 @@ router.put("/favorites", protect, async (req, res) => {
     });
   }
 });
+
+// ======================================================
+// WATCHLIST - ADD ITEM
+// ======================================================
+
+router.post("/watchlist", protect, async (req, res) => {
+  try {
+    const {
+      itemId,
+      category,
+      title,
+      image,
+      status,
+    } = req.body;
+
+    if (!itemId || !category || !title) {
+      return res.status(400).json({
+        message: "Item ID, category and title are required.",
+      });
+    }
+
+    if (!["Anime", "Manga", "Manhwa"].includes(category)) {
+      return res.status(400).json({
+        message: "Invalid category.",
+      });
+    }
+
+    const validStatuses = [
+      "Watching",
+      "Completed",
+      "Plan to Watch",
+      "On Hold",
+      "Dropped",
+    ];
+
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid watchlist status.",
+      });
+    }
+
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found.",
+      });
+    }
+
+    const alreadyExists = user.watchlist.some(
+      (item) =>
+        item.itemId === String(itemId) &&
+        item.category === category
+    );
+
+    if (alreadyExists) {
+      return res.status(400).json({
+        message: "Item already exists in your watchlist.",
+      });
+    }
+
+    user.watchlist.push({
+      itemId: String(itemId),
+      category,
+      title,
+      image: image || "",
+      status: status || "Plan to Watch",
+    });
+
+    await user.save();
+
+    res.json({
+      message: "Added to watchlist successfully.",
+      watchlist: user.watchlist,
+    });
+  } catch (error) {
+    console.error("Add watchlist error:", error.message);
+
+    res.status(500).json({
+      message: "Server error while adding to watchlist.",
+    });
+  }
+});
+
+
+// ======================================================
+// WATCHLIST - GET ITEMS
+// ======================================================
+
+router.get("/watchlist", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select(
+      "watchlist"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found.",
+      });
+    }
+
+    res.json({
+      watchlist: user.watchlist,
+    });
+  } catch (error) {
+    console.error("Get watchlist error:", error.message);
+
+    res.status(500).json({
+      message: "Server error while getting watchlist.",
+    });
+  }
+});
+
+
+// ======================================================
+// WATCHLIST - UPDATE STATUS
+// ======================================================
+
+router.put("/watchlist/:itemId", protect, async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { category, status } = req.body;
+
+    const validStatuses = [
+      "Watching",
+      "Completed",
+      "Plan to Watch",
+      "On Hold",
+      "Dropped",
+    ];
+
+    if (!category || !status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        message: "Valid category and status are required.",
+      });
+    }
+
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found.",
+      });
+    }
+
+    const item = user.watchlist.find(
+      (entry) =>
+        entry.itemId === String(itemId) &&
+        entry.category === category
+    );
+
+    if (!item) {
+      return res.status(404).json({
+        message: "Watchlist item not found.",
+      });
+    }
+
+    item.status = status;
+
+    await user.save();
+
+    res.json({
+      message: "Watchlist status updated successfully.",
+      watchlist: user.watchlist,
+    });
+  } catch (error) {
+    console.error("Update watchlist error:", error.message);
+
+    res.status(500).json({
+      message: "Server error while updating watchlist.",
+    });
+  }
+});
+
+
+// ======================================================
+// WATCHLIST - DELETE ITEM
+// ======================================================
+
+router.delete("/watchlist/:itemId", protect, async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { category } = req.body;
+
+    if (!category || !["Anime", "Manga", "Manhwa"].includes(category)) {
+      return res.status(400).json({
+        message: "Valid category is required.",
+      });
+    }
+
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found.",
+      });
+    }
+
+    user.watchlist = user.watchlist.filter(
+      (item) =>
+        !(
+          item.itemId === String(itemId) &&
+          item.category === category
+        )
+    );
+
+    await user.save();
+
+    res.json({
+      message: "Removed from watchlist successfully.",
+      watchlist: user.watchlist,
+    });
+  } catch (error) {
+    console.error("Delete watchlist error:", error.message);
+
+    res.status(500).json({
+      message: "Server error while removing from watchlist.",
+    });
+  }
+});
 module.exports = router;

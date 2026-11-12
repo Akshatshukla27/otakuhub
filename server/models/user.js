@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema(
       default: [],
     },
 
-    readingProgress: {
+        readingProgress: {
       anime: {
         type: Map,
         of: readingProgressItemSchema,
@@ -77,6 +77,47 @@ const userSchema = new mongoose.Schema(
         of: readingProgressItemSchema,
         default: {},
       },
+    },
+
+    // WATCHLIST
+    watchlist: {
+      type: [
+        {
+          itemId: {
+            type: String,
+            required: true,
+          },
+
+          category: {
+            type: String,
+            enum: ["Anime", "Manga", "Manhwa"],
+            required: true,
+          },
+
+          title: {
+            type: String,
+            required: true,
+          },
+
+          image: {
+            type: String,
+            default: "",
+          },
+
+          status: {
+            type: String,
+            enum: [
+              "Watching",
+              "Completed",
+              "Plan to Watch",
+              "On Hold",
+              "Dropped",
+            ],
+            default: "Plan to Watch",
+          },
+        },
+      ],
+      default: [],
     },
   },
   {
