@@ -16,23 +16,31 @@ const app = express();
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "https://otakuhub-theta.vercel.app",
-    ],
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "https://otakuhub-theta.vercel.app",
+      ];
+
+      const isVercelPreview =
+        origin &&
+        /^https:\/\/otakuhub-[a-z0-9-]+\.vercel\.app$/i.test(origin);
+
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        isVercelPreview
+      ) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   })
 );
-
-
-// IMPORTANT:
-// Parse JSON request bodies BEFORE API routes
-app.use(express.json());
-
-// Parse URL-encoded request bodies
-app.use(express.urlencoded({ extended: true }));
 
 // =====================================================
 // ENVIRONMENT VARIABLES
