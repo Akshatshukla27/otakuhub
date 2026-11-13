@@ -13,6 +13,8 @@ const app = express();
 // =====================================================
 
 // Allow React/Vite frontend to communicate with backend
+const authRoutes = require("./routes/auth");
+app.use("/api/auth", authRoutes);
 
 app.use(
   cors({
@@ -41,6 +43,13 @@ app.use(
     credentials: true,
   })
 );
+
+// Parse incoming JSON requests
+app.use(express.json());
+
+// Parse URL-encoded requests
+app.use(express.urlencoded({ extended: true }));
+
 
 // =====================================================
 // ENVIRONMENT VARIABLES
