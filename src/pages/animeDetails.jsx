@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -8,6 +9,11 @@ import {
 
 import { syncFavorites } from "../services/favoriteService";
 
+import {
+  addToWatchlist,
+  getWatchlist,
+} from "../services/watchlist";
+
 function AnimeDetails() {
   const { id } = useParams();
 
@@ -15,6 +21,10 @@ function AnimeDetails() {
   const [loading, setLoading] = useState(true);
 
   const [isFavorite, setIsFavorite] = useState(false);
+
+  const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const [watchlistStatus, setWatchlistStatus] = useState("Plan to Watch");
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
 
   const [progress, setProgress] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
@@ -50,6 +60,35 @@ function AnimeDetails() {
         console.log("Anime details:", data);
 
         setAnime(data);
+
+        // -----------------------------------------------
+        // WATCHLIST
+        // -----------------------------------------------
+
+        setIsInWatchlist(false);
+        setWatchlistStatus("Plan to Watch");
+
+        if (localStorage.getItem("otakuhubToken")) {
+          try {
+            const savedWatchlist = await getWatchlist();
+
+            const savedItem = (savedWatchlist || []).find(
+              (item) =>
+                String(item.itemId) === String(data.mal_id) &&
+                item.category === "Anime"
+            );
+
+            setIsInWatchlist(Boolean(savedItem));
+
+            if (savedItem) {
+              setWatchlistStatus(
+                savedItem.status || "Plan to Watch"
+              );
+            }
+          } catch (error) {
+            console.error("Watchlist loading error:", error);
+          }
+        }
 
         // -----------------------------------------------
         // STREAMING
@@ -248,10 +287,52 @@ function AnimeDetails() {
         animeFavorites: animeFavoriteIds,
       });
     } catch (error) {
-      console.error(
-        "Anime favorite sync error:",
-        error
+      console.error("Anime favorite sync error:", error);
+    }
+  };
+
+  // =====================================================
+  // ADD TO WATCHLIST
+  // IMPORTANT: This is OUTSIDE toggleFavorite
+  // =====================================================
+
+  const handleAddToWatchlist = async () => {
+    if (!anime) {
+      return;
+    }
+
+    if (!localStorage.getItem("otakuhubToken")) {
+      alert("Please log in to add items to your Watchlist.");
+      return;
+    }
+
+    try {
+      setWatchlistLoading(true);
+
+      const updated = await addToWatchlist(
+        anime,
+        "Anime",
+        watchlistStatus
       );
+
+      setIsInWatchlist(true);
+
+      const savedItem = (updated || []).find(
+        (item) =>
+          String(item.itemId) === String(anime.mal_id) &&
+          item.category === "Anime"
+      );
+
+      setWatchlistStatus(
+        savedItem?.status || watchlistStatus
+      );
+
+      alert("Successfully added to Watchlist!");
+    } catch (error) {
+      console.error("Add to Watchlist error:", error);
+      alert(error.message || "Unable to add to Watchlist.");
+    } finally {
+      setWatchlistLoading(false);
     }
   };
 
@@ -318,6 +399,8 @@ function AnimeDetails() {
 
           <h1>{anime.title}</h1>
 
+          {/* FAVORITES */}
+
           <button
             className="favorite-btn"
             onClick={toggleFavorite}
@@ -326,6 +409,38 @@ function AnimeDetails() {
               ? "💔 Remove from Favorites"
               : "❤️ Add to Favorites"}
           </button>
+
+          {/* WATCHLIST */}
+
+          <div className="watchlist-controls">
+
+            <select
+              value={watchlistStatus}
+              onChange={(e) =>
+                setWatchlistStatus(e.target.value)
+              }
+              disabled={isInWatchlist}
+            >
+              <option value="Watching">Watching</option>
+              <option value="Completed">Completed</option>
+              <option value="Plan to Watch">Plan to Watch</option>
+              <option value="On Hold">On Hold</option>
+              <option value="Dropped">Dropped</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={handleAddToWatchlist}
+              disabled={watchlistLoading || isInWatchlist}
+            >
+              {watchlistLoading
+                ? "Adding..."
+                : isInWatchlist
+                ? "✓ Already in Watchlist"
+                : "➕ Add to Watchlist"}
+            </button>
+
+          </div>
 
           <p className="details-score">
             ⭐ {anime.score || "N/A"}
@@ -360,68 +475,65 @@ function AnimeDetails() {
             ) : streamingEpisodes.length > 0 ? (
               <div className="anime-watch-list">
 
-                {streamingEpisodes.map(
-                  (episode, index) => {
+                {streamingEpisodes.map((episode, index) => {
 
-                    if (!episode.url) {
-                      return null;
-                    }
+                  if (!episode.url) {
+                    return null;
+                  }
 
-                    const episodeNumber = index + 1;
+                  const episodeNumber = index + 1;
 
-                    return (
-                      <div
-                        key={`${episode.url}-${index}`}
-                        className="anime-watch-card"
-                      >
+                  return (
+                    <div
+                      key={`${episode.url}-${index}`}
+                      className="anime-watch-card"
+                    >
 
-                        {episode.thumbnail ? (
-                          <img
-                            src={episode.thumbnail}
-                            alt={
-                              episode.title ||
-                              `Episode ${episodeNumber}`
-                            }
-                            className="anime-watch-thumbnail"
-                          />
-                        ) : (
-                          <div className="anime-watch-placeholder">
-                            ▶️
-                          </div>
-                        )}
-
-                        <div className="anime-watch-info">
-
-                          <span className="anime-episode-number">
-                            Episode {episodeNumber}
-                          </span>
-
-                          <h4>
-                            {episode.title ||
-                              `Episode ${episodeNumber}`}
-                          </h4>
-
-                          <span className="anime-watch-site">
-                            📺{" "}
-                            {episode.site ||
-                              "Official Source"}
-                          </span>
-
-                          <a
-                            href={episode.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="anime-watch-button"
-                          >
-                            ▶ Watch
-                          </a>
-
+                      {episode.thumbnail ? (
+                        <img
+                          src={episode.thumbnail}
+                          alt={
+                            episode.title ||
+                            `Episode ${episodeNumber}`
+                          }
+                          className="anime-watch-thumbnail"
+                        />
+                      ) : (
+                        <div className="anime-watch-placeholder">
+                          ▶️
                         </div>
+                      )}
+
+                      <div className="anime-watch-info">
+
+                        <span className="anime-episode-number">
+                          Episode {episodeNumber}
+                        </span>
+
+                        <h4>
+                          {episode.title ||
+                            `Episode ${episodeNumber}`}
+                        </h4>
+
+                        <span className="anime-watch-site">
+                          📺{" "}
+                          {episode.site || "Official Source"}
+                        </span>
+
+                        <a
+                          href={episode.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="anime-watch-button"
+                        >
+                          ▶ Watch
+                        </a>
 
                       </div>
-                    );
-                  }
-                )}
+
+                    </div>
+                  );
+                })}
 
               </div>
             ) : (
@@ -577,8 +689,7 @@ function AnimeDetails() {
         <h2>📖 Synopsis</h2>
 
         <p>
-          {anime.synopsis ||
-            "No synopsis available."}
+          {anime.synopsis || "No synopsis available."}
         </p>
 
       </div>
